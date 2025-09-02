@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comedogenic Ingredient Checker</title>
+  <style>
+    :root { --bg:#0b0f14; --panel:#121821; --muted:#2a3340; --ok:#1b8a59; --warn:#b38f00; --bad:#b33951; --text:#e6eef8; --sub:#9eb0c6; }
+    *{box-sizing:border-box;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial}
+    body{margin:0;background:linear-gradient(120deg,#0b0f14 0%,#0f1520 80%);color:var(--text)}
+    header{padding:28px 16px 12px;max-width:1100px;margin:0 auto}
+    h1{margin:0 0 6px;font-size:28px;letter-spacing:.2px}
+    .sub{color:var(--sub);font-size:14px}
+    main{max-width:1100px;margin:16px auto 48px;padding:0 16px}
+    .card{background:var(--panel);border:1px solid #1e2633;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .grid{display:grid;gap:16px}
+    @media (min-width:900px){.grid{grid-template-columns:1.1fr .9fr}}
+    .section{padding:18px 18px 16px}
+    textarea{width:100%;min-height:160px;border-radius:12px;border:1px solid #2b3443;background:#0d131b;color:var(--text);padding:12px 12px 40px 12px;resize:vertical}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+    button{border:0;border-radius:999px;padding:10px 14px;background:#1f2937;color:#fff;cursor:pointer}
+    button.primary{background:#2563eb}
+    button.ghost{background:#0d131b;border:1px solid #2b3443;color:#cfe0ff}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .switch{display:inline-flex;align-items:center;gap:10px;background:#0d131b;border:1px solid #2b3443;border-radius:999px;padding:6px 10px}
+    .switch input{accent-color:#2563eb}
+    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #2b3443;background:#0d131b;border-radius:999px;padding:6px 12px;margin:6px 6px 0 0;font-size:13px;max-width:100%;flex-wrap:wrap;word-break:break-word}
+    .pill.ok{border-color:#1f6e49}
+    .pill.warn{border-color:#8f7600}
+    .pill.bad{border-color:#7d2336}
+    .dot{width:8px;height:8px;border-radius:999px;background:#64748b}
+    .ok .dot{background:var(--ok)}
+    .warn .dot{background:var(--warn)}
+    .bad .dot{background:var(--bad)}
+    .list{padding:0;margin:0;list-style:none}
+    .row{display:grid;grid-template-columns:26px 1fr 120px 1fr;gap:12px;align-items:center;padding:10px 8px;border-bottom:1px dashed #202a39}
+    .row:last-child{border-bottom:0}
+    .tag{font-size:12px;border-radius:999px;padding:2px 8px;border:1px solid #2b3443;color:#cfe0ff;white-space:normal;display:inline-block;word-break:break-word;text-align:center}
+    .tag.bad{border-color:#7d2336;color:#ffd7df}
+    .tag.warn{border-color:#8f7600;color:#fff3c4}
+    .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#cbd5e1;background:#0b1220;border:1px solid #1e2633;padding:2px 6px;border-radius:6px}
+    .muted{color:#9fb1c6}
+    .table{overflow-x:auto;border-radius:14px;border:1px solid #1f2735}
+    .tableHeader{display:grid;grid-template-columns:26px 1fr 120px 1fr;gap:12px;padding:10px 8px;background:#0e1620;color:#9fb1c6;font-size:12px;border-bottom:1px solid #1f2735}
+    .empty{padding:12px;color:#9fb1c6}
+    footer{max-width:1100px;margin:10px auto 60px;color:#93a4b8;font-size:12px;padding:0 16px}
+    .hl{background:linear-gradient(90deg,rgba(179,57,81,.18),rgba(179,57,81,.06));border-bottom:1px dotted rgba(179,57,81,.6)}
+    .tools{display:flex;gap:8px;flex-wrap:wrap}
+    .sr{position:relative}
+    .sr input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2b3443;background:#0d131b;color:#e6eef8}
+    .count{font-size:12px;color:#9fb1c6}
+    
+    
+    /* Mobile adjustments */
+    @media (max-width:600px){
+    .row, .tableHeader{grid-template-columns:1fr 1fr;grid-template-areas:"num name" "rating notes";}
+    .row div:nth-child(1){grid-area:num}
+    .row div:nth-child(2){grid-area:name}
+    .row div:nth-child(3){grid-area:rating}
+    .row div:nth-child(4){grid-area:notes}
+    .tableHeader div:nth-child(1){grid-area:num}
+    .tableHeader div:nth-child(2){grid-area:name}
+    .tableHeader div:nth-child(3){grid-area:rating}
+    .tableHeader div:nth-child(4){grid-area:notes}
+    }
+    </style>
+</head>
+<body>
+  <header>
+    <h1>Comedogenic Ingredient Checker</h1>
+    <div class="sub">Paste an INCI list (comma‑separated). The tool parses by commas and highlights ingredients that may be comedogenic.</div>
+  </header>
+
+  <main class="grid">
+    <!-- LEFT: Input -->
+    <section class="card section">
+      <label for="ing" class="sub" style="display:block;margin-bottom:8px;">Ingredients (comma‑separated)</label>
+      <textarea id="ing" placeholder="Water, Glycerin, Isopropyl Myristate, Cocos Nucifera (Coconut) Oil, Dimethicone, Laureth-4, ..."></textarea>
+      <div class="controls">
+        <button id="analyze" class="primary">Analyze</button>
+        <button id="clear" class="ghost">Clear</button>
+        <span class="switch">
+          <input type="checkbox" id="mode"/>
+          <label for="mode" class="sub">Cautious mode (flag broader families)</label>
+        </span>
+        <span class="count" id="counts"></span>
+      </div>
+    </section>
+
+    <!-- RIGHT: Results summary -->
+    <section class="card section">
+      <div class="sub" style="margin-bottom:8px;">Detected (click a pill to focus)</div>
+      <div id="pills"></div>
+      <div style="height:10px"></div>
+      <div class="tools">
+        <button id="copyReport" class="ghost">Copy report</button>
+        <button id="showAll" class="ghost">Show all tokens</button>
+      </div>
+    </section>
+
+    <!-- FULL-WIDTH: Table -->
+    <section class="card section" style="grid-column:1 / -1">
+      <div class="table">
+        <div class="tableHeader">
+          <div>#</div>
+          <div>Ingredient</div>
+          <div>Rating</div>
+          <div>Notes</div>
+        </div>
+        <div id="rows"></div>
+      </div>
+      <div id="empty" class="empty" style="display:none">No suspicious ingredients detected in strict mode. Try <span class="k">Cautious mode</span> for broader matches, or verify with context (product type, leave‑on vs rinse‑off, concentration).</div>
+    </section>
+
+    <!-- Preview: Tokenized string with highlights -->
+    <section class="card section" style="grid-column:1 / -1">
+      <div class="sub" style="margin-bottom:8px;">Parsed preview</div>
+      <div id="preview" style="line-height:1.9"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>Disclaimer:</strong> “Comedogenic” ratings are approximate, drawn from public lists and historical (often rabbit‑ear) studies; real‑world acne risk varies by person, formulation, and concentration. Use this as a screening aid—not medical advice.</p>
+  </footer>
+
+  <script>
+    // --- Minimal, front‑end only knowledge base ----------------------------------
+    // Ratings: 0 (low) → 5 (higher comedogenic potential). Notes are short hints.
+    const DB = [
+      { name: "Isopropyl Myristate", rating: 5, notes: "Highly comedogenic ester", aka: ["IPM"] },
+      { name: "Isopropyl Palmitate", rating: 4, notes: "Comedogenic ester" },
+      { name: "Isopropyl Isostearate", rating: 5, notes: "Comedogenic ester" },
+      { name: "Myristyl Myristate", rating: 5, notes: "Occlusive ester" },
+      { name: "Laureth-4", rating: 5, notes: "Surfactant; often flagged", pattern: /laureth\s*-?\s*0*4\b/i },
+      { name: "Decyl Oleate", rating: 4, notes: "Oleic ester" },
+      { name: "Isocetyl Stearate", rating: 4, notes: "Fatty ester" },
+      { name: "Butyl Stearate", rating: 4, notes: "Fatty ester" },
+      { name: "Isostearyl Isostearate", rating: 4, notes: "Fatty ester" },
+      { name: "Cocoa Butter (Theobroma Cacao Seed Butter)", rating: 4, notes: "Natural butter" , aka:["Cocoa Butter","Theobroma Cacao Seed Butter"] },
+      { name: "Coconut Oil (Cocos Nucifera Oil)", rating: 4, notes: "Natural oil", aka:["Coconut Oil","Cocos Nucifera Oil","Cocos Nucifera (Coconut) Oil"] },
+      { name: "Wheat Germ Oil", rating: 5, notes: "Natural oil (high oleic)" },
+      { name: "Algae Extract", rating: 5, notes: "Seaweed derivatives; varies" , aka:["Seaweed Extract","Carrageenan"] },
+      { name: "Lanolin & Derivatives", rating: 4, notes: "May be comedogenic for some", aka:["Lanolin","Lanolin Oil","Acetylated Lanolin","Lanolin Alcohol","PEG-16 Lanolin"] },
+      { name: "Lauric Acid", rating: 4, notes: "Fatty acid; variable" },
+      { name: "Oleic Acid", rating: 3, notes: "Fatty acid; context‑dependent" },
+      { name: "Ethylhexyl Palmitate", rating: 3, notes: "Emollient ester" },
+      { name: "Ethylhexyl Stearate (Octyl Stearate)", rating: 3, notes: "Emollient ester", aka:["Octyl Stearate","Ethylhexyl Stearate"] },
+      { name: "Glyceryl Stearate SE", rating: 3, notes: "SE variant more occlusive" },
+      { name: "Myristic Acid", rating: 3, notes: "Fatty acid" },
+      { name: "Isopropyl Lanolate", rating: 4, notes: "Lanolin ester" },
+      { name: "Palm Oil", rating: 4, notes: "Natural oil, high palmitic acid" },
+        { name: "Soybean Oil", rating: 4, notes: "Natural oil, moderate comedogenicity" },
+        { name: "Peanut Oil", rating: 4, notes: "Natural oil, may clog pores" },
+        { name: "Olive Oil", rating: 2, notes: "Mixed evidence, depends on oleic content" },
+        { name: "Avocado Oil", rating: 3, notes: "Rich oil, can be occlusive" },
+        { name: "Shea Butter (Butyrospermum Parkii)", rating: 3, notes: "Natural butter, variable comedogenicity" },
+        { name: "Mango Seed Butter", rating: 2, notes: "Generally better tolerated than cocoa butter" },
+        { name: "Peach Kernel Oil", rating: 4, notes: "Natural oil, high risk for some" },
+        { name: "Octyl Palmitate", rating: 4, notes: "Common emollient ester" },
+    { name: "Isocetyl Alcohol", rating: 4, notes: "Fatty alcohol, potentially occlusive" },
+    { name: "Cetyl Acetate", rating: 4, notes: "Fatty ester" },
+    { name: "Propylene Glycol Monostearate", rating: 4, notes: "Ester, often flagged" },
+    { name: "Stearyl Heptanoate", rating: 5, notes: "Potent comedogenic ester" },
+    { name: "Isopropyl Stearate", rating: 5, notes: "Very comedogenic ester" },
+    { name: "Stearic Acid", rating: 2, notes: "Common fatty acid, mildly comedogenic" },
+{ name: "Palmitic Acid", rating: 2, notes: "Fatty acid, often low-moderate risk" },
+{ name: "Capric Acid", rating: 2, notes: "Fatty acid, milder" },
+{ name: "Caprylic/Capric Triglyceride", rating: 2, notes: "Derived from coconut, less comedogenic than whole oil" },
+{ name: "Isostearic Acid", rating: 3, notes: "Modified fatty acid" },
+{ name: "Beeswax (Cera Alba)", rating: 2, notes: "Natural wax, mixed evidence" },
+{ name: "Paraffin Wax", rating: 2, notes: "Occlusive, can trap oils" },
+{ name: "Microcrystalline Wax", rating: 2, notes: "Petroleum-derived wax" },
+{ name: "D & C Red No. 30 (colorant)", rating: 3, notes: "Certain dyes linked to acne in some studies" },
+{ name: "Acetylated Lanolin Alcohol", rating: 4, notes: "Lanolin derivative" },
+{ name: "Oleyl Alcohol", rating: 3, notes: "Fatty alcohol, variable risk" },
+    ];
+
+    // Broader heuristics for cautious mode (patterns with suggested ratings)
+    const CAUTIOUS_RULES = [
+      { label: "Isopropyl + (myristate|palmitate|isostearate)", rating: 4, test: t => (/\bisopropyl\b/i.test(t) && /(myristate|palmitate|isostearate)\b/i.test(t)) },
+      { label: "(decyl|cetyl|isocetyl|isostearyl) + stearate", rating: 3, test: t => (/(decyl|cetyl|isocetyl|isostearyl)\b/i.test(t) && /stearate\b/i.test(t)) },
+      { label: "laureth- (≤4)", rating: 4, test: t => { const m=t.toLowerCase().match(/laureth\s*-\s*(\d+)/); return m && parseInt(m[1],10) <= 4; } },
+      { label: "(cocoa|coconut|wheat germ) oil/butter", rating: 4, test: t => /(cocoa butter|coconut oil|cocos nucifera|wheat germ oil)/i.test(t) },
+      { label: "lanolin family", rating: 3, test: t => /lanolin/i.test(t) },
+      { label: "oleate/oleic family", rating: 3, test: t => /(oleate|oleic)/i.test(t) },
+    ];
+
+    // --- Utilities ----------------------------------------------------------------
+    const norm = s => s.toLowerCase().replace(/\(.*?\)/g, "").replace(/[^a-z0-9]/g, "").trim();
+
+    function splitTokens(raw){
+      return raw
+        .split(/,(?![^()]*\))/g) // split by commas not inside parentheses
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    function expandAliases(entry){
+      const bases = [entry.name].concat(entry.aka||[]);
+      const patterns = bases.map(b => ({ raw:b, norm:norm(b) }));
+      if(entry.pattern) patterns.push({ raw:String(entry.pattern), norm:null, pattern:entry.pattern });
+      return patterns;
+    }
+
+    const DB_INDEX = DB.map(e => ({ e, keys: expandAliases(e) }));
+
+    function checkToken(token, cautious){
+      const n = norm(token);
+      // exact & alias matches
+      for(const {e, keys} of DB_INDEX){
+        for(const k of keys){
+          if(k.pattern){ if(k.pattern.test(token)) return { match:e.name, rating:e.rating, notes:e.notes, basis:"exact/pattern", family:e }; }
+          if(k.norm && k.norm === n) return { match:e.name, rating:e.rating, notes:e.notes, basis:"exact", family:e };
+        }
+      }
+      // cautious heuristics
+      if(cautious){
+        for(const rule of CAUTIOUS_RULES){
+          try{ if(rule.test(token)){ return { match:rule.label, rating:rule.rating, notes:"Heuristic match", basis:"heuristic", family:null }; } }
+          catch{ /* ignore */ }
+        }
+      }
+      return null;
+    }
+
+    function severityTag(r){
+      if(r >= 5) return { cls:"bad", label:"High (5)" };
+      if(r >= 4) return { cls:"bad", label:`High (${r})` };
+      if(r >= 3) return { cls:"warn", label:`Moderate (${r})` };
+      return { cls:"ok", label:`Low (${r})` };
+    }
+
+    // --- UI Logic -----------------------------------------------------------------
+    const els = {
+      ing: document.getElementById('ing'),
+      analyze: document.getElementById('analyze'),
+      clear: document.getElementById('clear'),
+      mode: document.getElementById('mode'),
+      pills: document.getElementById('pills'),
+      rows: document.getElementById('rows'),
+      empty: document.getElementById('empty'),
+      preview: document.getElementById('preview'),
+      counts: document.getElementById('counts'),
+      copy: document.getElementById('copyReport'),
+      showAll: document.getElementById('showAll'),
+    };
+
+    function analyze(){
+      const cautious = els.mode.checked;
+      const tokens = splitTokens(els.ing.value);
+      const results = tokens.map(t => ({ token:t, hit: checkToken(t, cautious) }));
+
+      // summary pills
+      const matches = results.filter(r => r.hit);
+      els.pills.innerHTML = '';
+      matches
+        .sort((a,b) => (b.hit?.rating||0) - (a.hit?.rating||0))
+        .forEach((r,i) => {
+          const sev = severityTag(r.hit.rating);
+          const pill = document.createElement('span');
+          pill.className = `pill ${sev.cls}`;
+          pill.innerHTML = `<span class="dot"></span><strong>${escapeHtml(displayName(r.token))}</strong><span class="tag ${sev.cls}">${sev.label}</span>`;
+          pill.title = r.hit.notes || '';
+          pill.addEventListener('click',() => focusRow(i, r.token));
+          els.pills.appendChild(pill);
+        });
+
+      // table
+      els.rows.innerHTML = '';
+      let idx = 0;
+      results.forEach((r,i) => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.dataset.token = r.token.toLowerCase();
+        const sev = r.hit ? severityTag(r.hit.rating) : null;
+        row.innerHTML = `
+          <div class="muted">${(++idx).toString().padStart(2,'0')}</div>
+          <div>${escapeHtml(r.token)}</div>
+          <div>${r.hit ? `<span class="tag ${sev.cls}">${sev.label}</span>` : '<span class="tag">—</span>'}</div>
+          <div class="muted">${r.hit ? escapeHtml(r.hit.notes || r.hit.basis) : 'No match'}</div>
+        `;
+        els.rows.appendChild(row);
+      });
+
+      els.empty.style.display = matches.length ? 'none' : '';
+      els.counts.textContent = `${tokens.length} tokens • ${matches.length} flagged`;
+
+      // preview with inline highlights
+      const frag = document.createDocumentFragment();
+      tokens.forEach((t, i) => {
+        const span = document.createElement('span');
+        if(results[i].hit){ span.className = 'hl'; span.title = results[i].hit.notes || ''; }
+        span.textContent = (i? ' ' : '') + t + (i < tokens.length-1 ? ', ' : '');
+        frag.appendChild(span);
+      });
+      els.preview.innerHTML = '';
+      els.preview.appendChild(frag);
+
+      // expose for copy
+      window.__results = results;
+    }
+
+    function focusRow(index, token){
+      const target = Array.from(els.rows.children).find(r => r.dataset.token === token.toLowerCase());
+      if(!target) return;
+      target.scrollIntoView({ behavior:'smooth', block:'center' });
+      target.style.outline = '2px solid #2563eb';
+      setTimeout(()=> target.style.outline='none', 1200);
+    }
+
+    function copyReport(){
+      const res = (window.__results||[]).filter(r => r.hit);
+      if(!res.length){ navigator.clipboard.writeText('No comedogenic matches found.'); return; }
+      const lines = res.map(r => {
+        const sev = severityTag(r.hit.rating).label;
+        return `• ${r.token} — ${sev}${r.hit.notes?` — ${r.hit.notes}`:''}`;
+      });
+      const text = 'Comedogenic screen (possible matches)\n' + lines.join('\n');
+      navigator.clipboard.writeText(text);
+    }
+
+    function showAllTokens(){
+      const tokens = splitTokens(els.ing.value);
+      if(!tokens.length) return;
+      alert(tokens.map((t,i)=>`${(i+1).toString().padStart(2,'0')}. ${t}`).join('\n'));
+    }
+
+    function escapeHtml(s){
+      return s.replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;','\'':'&#39;'}[m]));
+    }
+    function displayName(s){ return s.replace(/\s+/g,' ').trim(); }
+
+    // wiring
+    els.analyze.addEventListener('click', analyze);
+    els.clear.addEventListener('click', ()=>{ els.ing.value=''; analyze(); });
+    els.copy.addEventListener('click', copyReport);
+    els.showAll.addEventListener('click', showAllTokens);
+
+    // live analyze with debounce
+    let t=null; els.ing.addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(analyze, 200); });
+
+    // sample demo
+    //els.ing.value = 'Water, Glycerin, Isopropyl Myristate, Cocos Nucifera (Coconut) Oil, Dimethicone, Laureth-4, Ethylhexyl Stearate, Niacinamide, Sodium Hyaluronate';
+    analyze();
+  </script>
+</body>
+</html>
